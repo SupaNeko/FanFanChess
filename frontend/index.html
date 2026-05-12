@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>翻翻棋 - 在线对战</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- 全局消息提示 -->
+  <div id="toast-message" class="toast-message" style="display:none;"></div>
+
+  <div id="app">
+    <!-- 登录页 -->
+    <div id="login-view" class="view active">
+      <div class="login-container">
+        <h1 class="game-title">翻翻棋</h1>
+        <p class="game-subtitle">在线策略对战</p>
+        <div class="login-form">
+          <input type="text" id="username-input" placeholder="请输入用户名" maxlength="20">
+          <button id="login-btn" class="btn-primary">进入游戏</button>
+        </div>
+        <p class="login-hint">用户名是您的唯一标识，无需密码</p>
+      </div>
+    </div>
+
+    <!-- 模式选择 -->
+    <div id="mode-view" class="view">
+      <div class="mode-container">
+        <h2 class="welcome-text">欢迎，<span id="user-name"></span></h2>
+        <div class="mode-buttons">
+          <button id="local-mode-btn" class="mode-card">
+            <div class="mode-icon">🎮</div>
+            <h3>本地模式</h3>
+            <p>自己与自己博弈</p>
+          </button>
+          <button id="online-mode-btn" class="mode-card">
+            <div class="mode-icon">🌐</div>
+            <h3>联机模式</h3>
+            <p>与好友在线对战</p>
+          </button>
+        </div>
+        <button id="logout-btn" class="btn-secondary">退出登录</button>
+      </div>
+    </div>
+
+    <!-- 联机大厅 -->
+    <div id="lobby-view" class="view">
+      <div class="lobby-container">
+        <h2>联机大厅</h2>
+        <div class="lobby-actions">
+          <button id="create-room-btn" class="btn-primary">创建房间</button>
+          <div class="join-room-box">
+            <input type="text" id="room-code-input" placeholder="输入6位邀请码" maxlength="6">
+            <button id="join-room-btn" class="btn-primary">加入房间</button>
+          </div>
+        </div>
+        <button id="lobby-back-btn" class="btn-secondary">返回</button>
+      </div>
+    </div>
+
+    <!-- 房间页 -->
+    <div id="room-view" class="view">
+      <div class="room-container">
+        <div class="room-header">
+          <h2>游戏房间</h2>
+          <div class="room-code-box">
+            <span>邀请码：</span>
+            <span id="room-code-display" class="room-code"></span>
+            <button id="copy-code-btn" class="btn-small">复制</button>
+          </div>
+        </div>
+        <div class="players-area">
+          <div class="player-slot" id="player-0-slot">
+            <div class="player-avatar">👤</div>
+            <div class="player-name" id="player-0-name">等待加入...</div>
+            <div class="player-status" id="player-0-status"></div>
+          </div>
+          <div class="vs-divider">VS</div>
+          <div class="player-slot" id="player-1-slot">
+            <div class="player-avatar">👤</div>
+            <div class="player-name" id="player-1-name">等待加入...</div>
+            <div class="player-status" id="player-1-status"></div>
+          </div>
+        </div>
+        <div class="spectators-area" id="spectators-area" style="display:none;">
+          <span>观战者：</span>
+          <span id="spectators-list"></span>
+        </div>
+        <div class="room-actions">
+          <button id="ready-btn" class="btn-primary">准备</button>
+          <button id="leave-room-btn" class="btn-secondary">离开房间</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 游戏页 -->
+    <div id="game-view" class="view">
+      <!-- 抛硬币动画层 -->
+      <div id="coin-flip-overlay" class="overlay" style="display:none;">
+        <div class="coin-flip-container">
+          <div class="coin" id="coin">
+            <div class="coin-face coin-front"></div>
+            <div class="coin-face coin-back"></div>
+          </div>
+          <p id="coin-result-text">决定先后手...</p>
+        </div>
+      </div>
+
+      <!-- 规则浮窗按钮 -->
+      <div class="rules-wrapper">
+        <button id="rules-btn" class="rules-btn">?</button>
+        <div class="rules-popup" id="rules-popup">
+          <h4>翻翻棋规则</h4>
+          <ul>
+            <li><strong>棋子大小：</strong>帅>仕>相>馬>車>炮>兵</li>
+            <li><strong>特殊规则：</strong>帅不能吃兵，兵可以吃帅</li>
+            <li><strong>移动规则：</strong>所有棋子横竖走一格</li>
+            <li><strong>炮的规则：</strong>不吃子时走一格；吃子时隔恰好一子，可吃任何棋子</li>
+            <li><strong>翻棋规则：</strong>点击未翻开棋子可翻开，无位置限制</li>
+            <li><strong>同归于尽：</strong>相同大小棋子互吃时同时消失</li>
+            <li><strong>胜负：</strong>吃光对方棋子获胜；双方无子为和局</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="game-container">
+        <!-- 顶部信息栏 -->
+        <div class="game-header">
+          <div class="player-info" id="header-player-info">
+            <span id="my-color"></span>
+            <span id="turn-indicator"></span>
+          </div>
+        </div>
+
+        <div class="game-main">
+          <!-- 左侧棋子统计（红方） -->
+          <div class="side-panel left-panel">
+            <h3 id="red-player-name">红方</h3>
+            <div class="pieces-count" id="red-pieces-count"></div>
+          </div>
+
+          <!-- 棋盘区域 -->
+          <div class="board-area">
+            <div id="chess-board" class="chess-board"></div>
+            <div class="last-move-hint" id="last-move-hint"></div>
+          </div>
+
+          <!-- 右侧棋子统计（黑方） -->
+          <div class="side-panel right-panel">
+            <h3 id="black-player-name">黑方</h3>
+            <div class="pieces-count" id="black-pieces-count"></div>
+          </div>
+        </div>
+
+        <!-- 底部操作栏 -->
+        <div class="game-footer">
+          <button id="undo-btn" class="btn-secondary">请求悔棋</button>
+          <button id="surrender-btn" class="btn-danger">投降</button>
+          <button id="game-exit-btn" class="btn-secondary">退出</button>
+        </div>
+      </div>
+
+      <!-- 游戏结束弹窗 -->
+      <div id="game-over-modal" class="modal" style="display:none;">
+        <div class="modal-content">
+          <h2 id="game-over-title">游戏结束</h2>
+          <p id="game-over-message"></p>
+          <div class="modal-actions">
+            <button id="play-again-btn" class="btn-primary">再来一局</button>
+            <button id="back-to-lobby-btn" class="btn-secondary">返回大厅</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 悔棋请求弹窗 -->
+      <div id="undo-modal" class="modal" style="display:none;">
+        <div class="modal-content">
+          <h3>悔棋请求</h3>
+          <p id="undo-request-text"></p>
+          <div class="modal-actions">
+            <button id="undo-accept-btn" class="btn-primary">同意</button>
+            <button id="undo-reject-btn" class="btn-secondary">拒绝</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
