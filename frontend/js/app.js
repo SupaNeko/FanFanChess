@@ -951,6 +951,14 @@ function handleGameOver(data) {
     game.status = 'finished';
   }
 
+  // 对方非正常离开时，不显示胜负判定
+  if (data.reason === '对方离开') {
+    document.getElementById('game-over-title').textContent = '游戏结束';
+    document.getElementById('game-over-message').textContent = '对方离开';
+    document.getElementById('game-over-modal').style.display = 'flex';
+    return;
+  }
+
   let winnerText = '';
   if (data.winner === null) {
     winnerText = '和局！';
