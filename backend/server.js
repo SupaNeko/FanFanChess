@@ -581,6 +581,11 @@ wss.on('connection', (ws) => {
           break;
         }
 
+        case 'ping': {
+          send(ws, 'pong', {});
+          break;
+        }
+
         default:
           console.log('未知消息类型:', type);
       }

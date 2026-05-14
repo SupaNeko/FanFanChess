@@ -52,6 +52,42 @@ function hideToast() {
 }
 
 // ==================== WebSocket 管理 ====================
+let heartbeatInterval = null;
+let heartbeatTimeout = null;
+const HEARTBEAT_INTERVAL = 30000; // 30秒发送一次ping
+const HEARTBEAT_TIMEOUT = 90000;  // 90秒未收到消息则重连
+
+function startHeartbeat() {
+  stopHeartbeat();
+  heartbeatInterval = setInterval(() => {
+    if (AppState.ws && AppState.ws.readyState === WebSocket.OPEN) {
+      send('ping', {});
+    }
+  }, HEARTBEAT_INTERVAL);
+  resetHeartbeatTimeout();
+}
+
+function resetHeartbeatTimeout() {
+  if (heartbeatTimeout) clearTimeout(heartbeatTimeout);
+  heartbeatTimeout = setTimeout(() => {
+    console.log('心跳超时，主动重连');
+    if (AppState.ws) {
+      AppState.ws.close();
+    }
+  }, HEARTBEAT_TIMEOUT);
+}
+
+function stopHeartbeat() {
+  if (heartbeatInterval) {
+    clearInterval(heartbeatInterval);
+    heartbeatInterval = null;
+  }
+  if (heartbeatTimeout) {
+    clearTimeout(heartbeatTimeout);
+    heartbeatTimeout = null;
+  }
+}
+
 function connectWebSocket() {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const wsUrl = `${protocol}//${window.location.host}`;
@@ -61,11 +97,14 @@ function connectWebSocket() {
   AppState.ws.onopen = () => {
     console.log('WebSocket 连接成功');
     AppState.reconnectAttempts = 0;
+    startHeartbeat();
   };
 
   AppState.ws.onmessage = (event) => {
     try {
       const { type, data } = JSON.parse(event.data);
+      // 收到任何消息都重置心跳超时
+      resetHeartbeatTimeout();
       handleServerMessage(type, data);
     } catch (e) {
       console.error('解析消息失败:', e);
@@ -74,6 +113,7 @@ function connectWebSocket() {
 
   AppState.ws.onclose = () => {
     console.log('WebSocket 连接关闭');
+    stopHeartbeat();
     // 尝试重连
     if (AppState.reconnectAttempts < 3) {
       AppState.reconnectAttempts++;
