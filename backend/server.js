@@ -352,7 +352,7 @@ wss.on('connection', (ws) => {
 
             broadcastToRoom(room, 'piece_eaten', {
               from, to,
-              piece: { id: piece.id, type: piece.type, color: piece.color, name: piece.name },
+              piece: { id: piece.id, type: piece.type, color: piece.color, name: piece.name, flipped: true },
               eaten: { id: eatenPiece.id, type: eatenPiece.type, color: eatenPiece.color, name: eatenPiece.name },
               currentPlayer: 1 - game.currentPlayer,
               lastMove: game.lastMove
@@ -376,7 +376,7 @@ wss.on('connection', (ws) => {
 
             broadcastToRoom(room, 'piece_moved', {
               from, to,
-              piece: { id: piece.id, type: piece.type, color: piece.color, name: piece.name },
+              piece: { id: piece.id, type: piece.type, color: piece.color, name: piece.name, flipped: true },
               currentPlayer: 1 - game.currentPlayer,
               lastMove: game.lastMove
             });

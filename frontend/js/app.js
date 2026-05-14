@@ -287,18 +287,33 @@ document.getElementById('leave-room-btn').addEventListener('click', () => {
 
 document.getElementById('copy-code-btn').addEventListener('click', () => {
   const code = document.getElementById('room-code-display').textContent;
-  navigator.clipboard.writeText(code).then(() => {
-    showToast('邀请码已复制：' + code, 'success');
-  }).catch(() => {
-    // 降级方案
+
+  function fallbackCopy() {
     const input = document.createElement('input');
     input.value = code;
+    input.style.position = 'fixed';
+    input.style.left = '-9999px';
     document.body.appendChild(input);
+    input.focus();
     input.select();
-    document.execCommand('copy');
+    try {
+      document.execCommand('copy');
+      showToast('邀请码已复制：' + code, 'success');
+    } catch (err) {
+      showToast('复制失败，请手动复制：' + code, 'error');
+    }
     document.body.removeChild(input);
-    showToast('邀请码已复制：' + code, 'success');
-  });
+  }
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(code).then(() => {
+      showToast('邀请码已复制：' + code, 'success');
+    }).catch(() => {
+      fallbackCopy();
+    });
+  } else {
+    fallbackCopy();
+  }
 });
 
 // ==================== 抛硬币动画 ====================
