@@ -615,11 +615,25 @@ function renderLastMove() {
 
   const move = game.lastMove;
   let text = '';
-  let who = '对方';
+
+  // 判断上一步是谁走的
+  const prevPlayer = 1 - game.currentPlayer;
+  let who = '';
+
   if (game.mode === 'local') {
-    const prevPlayer = 1 - game.currentPlayer;
     const prevColor = game.playerColors[prevPlayer];
     who = prevColor === 'red' ? '红方' : (prevColor === 'black' ? '黑方' : '');
+  } else {
+    // 联机模式
+    if (AppState.playerIndex === -1) {
+      // 观战者，显示颜色
+      const prevColor = game.playerColors[prevPlayer];
+      who = prevColor === 'red' ? '红方' : (prevColor === 'black' ? '黑方' : '');
+    } else if (prevPlayer === AppState.playerIndex) {
+      who = '你';
+    } else {
+      who = '对方';
+    }
   }
 
   if (move.type === 'flip') {
