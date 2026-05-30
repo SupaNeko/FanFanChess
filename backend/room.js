@@ -153,12 +153,12 @@ class RoomManager {
       return this.leaveRoom(username);
     }
 
-    // waiting状态：延迟30秒从房间中移除
-    // 如果用户在这30秒内重连，调用 cancelOffline 取消
+    // waiting状态：延迟10分钟从房间中移除
+    // 如果用户在这10分钟内重连，调用 cancelOffline 取消
     const timer = setTimeout(() => {
       this.disconnectTimers.delete(username);
       this.leaveRoom(username);
-    }, 30000);
+    }, 10 * 60 * 1000);
 
     this.disconnectTimers.set(username, timer);
     return room;
