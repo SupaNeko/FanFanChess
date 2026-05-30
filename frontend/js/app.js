@@ -165,10 +165,11 @@ function handleServerMessage(type, data) {
       switchView('mode-view');
       document.getElementById('user-name').textContent = data.username;
 
-      // 如果之前有房间（重连场景），尝试重新加入
-      if (AppState.room && AppState.room.code) {
+      // 如果之前有房间（重连/刷新场景），尝试重新加入
+      const savedRoomCode = sessionStorage.getItem('fanfan_room_code');
+      if (savedRoomCode) {
         setTimeout(() => {
-          send('join_room', { code: AppState.room.code });
+          send('join_room', { code: savedRoomCode });
         }, 300);
       }
       break;
@@ -180,12 +181,14 @@ function handleServerMessage(type, data) {
     case 'room_created':
       AppState.room = data;
       AppState.playerIndex = data.playerIndex;
+      sessionStorage.setItem('fanfan_room_code', data.code);
       showRoomView(data);
       break;
 
     case 'room_joined':
       AppState.room = data;
       AppState.playerIndex = data.playerIndex;
+      sessionStorage.setItem('fanfan_room_code', data.code);
       showRoomView(data);
       break;
 
@@ -236,6 +239,7 @@ function handleServerMessage(type, data) {
     case 'left_room':
       AppState.room = null;
       AppState.game = null;
+      sessionStorage.removeItem('fanfan_room_code');
       switchView('lobby-view');
       break;
 
@@ -246,9 +250,10 @@ function handleServerMessage(type, data) {
     case 'error':
       showToast(data.message, 'error');
       // 房间已被删除（如创建者离开后房间解散），清理状态返回大厅
-      if (data.message === '房间不存在' && AppState.room) {
+      if (data.message === '房间不存在') {
         AppState.room = null;
         AppState.game = null;
+        sessionStorage.removeItem('fanfan_room_code');
         switchView('lobby-view');
       }
       break;
@@ -292,7 +297,10 @@ document.getElementById('online-mode-btn').addEventListener('click', () => {
 document.getElementById('logout-btn').addEventListener('click', () => {
   AppState.username = null;
   AppState.mode = null;
+  AppState.room = null;
+  AppState.game = null;
   sessionStorage.removeItem('fanfan_username');
+  sessionStorage.removeItem('fanfan_room_code');
   document.getElementById('username-input').value = '';
   switchView('login-view');
 });
