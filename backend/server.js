@@ -597,8 +597,10 @@ wss.on('connection', (ws) => {
 
   ws.on('close', () => {
     if (username) {
-      const room = roomManager.leaveRoom(username);
-      if (room) {
+      const room = roomManager.markOffline(username);
+      // 游戏中断线：markOffline 已经调用 leaveRoom 并处理广播
+      // waiting 状态断线：延迟30秒移除，暂时不广播（给玩家回来留时间）
+      if (room && room.status === 'playing') {
         broadcastToRoom(room, 'room_update', {
           players: room.players,
           spectators: room.spectators,
@@ -607,8 +609,10 @@ wss.on('connection', (ws) => {
         });
 
         if (room.status === 'finished' && room.game && room.game.winner) {
+          const winnerIdx2 = room.game.playerColors.indexOf(room.game.winner);
           broadcastToRoom(room, 'game_over', {
             winner: room.game.winner,
+            winnerName: winnerIdx2 >= 0 ? room.players[winnerIdx2] : null,
             reason: room.game.winReason,
             players: room.players,
             playerColors: room.game.playerColors
