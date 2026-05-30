@@ -89,6 +89,11 @@ function stopHeartbeat() {
 }
 
 function connectWebSocket() {
+  // 避免重复创建连接
+  if (AppState.ws && (AppState.ws.readyState === WebSocket.CONNECTING || AppState.ws.readyState === WebSocket.OPEN)) {
+    return;
+  }
+
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const wsUrl = `${protocol}//${window.location.host}`;
 
@@ -98,6 +103,12 @@ function connectWebSocket() {
     console.log('WebSocket 连接成功');
     AppState.reconnectAttempts = 0;
     startHeartbeat();
+
+    // 自动恢复登录（重连场景）
+    const savedUsername = sessionStorage.getItem('fanfan_username');
+    if (savedUsername && !AppState.username) {
+      send('login', { username: savedUsername });
+    }
   };
 
   AppState.ws.onmessage = (event) => {
@@ -126,6 +137,17 @@ function connectWebSocket() {
   };
 }
 
+// 页面可见性变化监听（切回前台时检测连接）
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    // 切回前台，检查连接状态
+    if (!AppState.ws || AppState.ws.readyState !== WebSocket.OPEN) {
+      showToast('连接已断开，正在恢复...', 'info');
+      connectWebSocket();
+    }
+  }
+});
+
 function send(type, data = {}) {
   if (AppState.ws && AppState.ws.readyState === WebSocket.OPEN) {
     AppState.ws.send(JSON.stringify({ type, data }));
@@ -139,8 +161,16 @@ function handleServerMessage(type, data) {
   switch (type) {
     case 'login_success':
       AppState.username = data.username;
+      sessionStorage.setItem('fanfan_username', data.username);
       switchView('mode-view');
       document.getElementById('user-name').textContent = data.username;
+
+      // 如果之前有房间（重连场景），尝试重新加入
+      if (AppState.room && AppState.room.code) {
+        setTimeout(() => {
+          send('join_room', { code: AppState.room.code });
+        }, 300);
+      }
       break;
 
     case 'login_error':
@@ -215,6 +245,12 @@ function handleServerMessage(type, data) {
 
     case 'error':
       showToast(data.message, 'error');
+      // 房间已被删除（如创建者离开后房间解散），清理状态返回大厅
+      if (data.message === '房间不存在' && AppState.room) {
+        AppState.room = null;
+        AppState.game = null;
+        switchView('lobby-view');
+      }
       break;
   }
 }
@@ -256,6 +292,7 @@ document.getElementById('online-mode-btn').addEventListener('click', () => {
 document.getElementById('logout-btn').addEventListener('click', () => {
   AppState.username = null;
   AppState.mode = null;
+  sessionStorage.removeItem('fanfan_username');
   document.getElementById('username-input').value = '';
   switchView('login-view');
 });
