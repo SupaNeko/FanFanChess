@@ -189,11 +189,29 @@ function handleServerMessage(type, data) {
       AppState.room = data;
       AppState.playerIndex = data.playerIndex;
       sessionStorage.setItem('fanfan_room_code', data.code);
-      showRoomView(data);
+      if (data.gameState) {
+        // 观战者加入正在进行的游戏，直接进入对局
+        startSpectatorGame(data.gameState);
+        if (data.spectators) {
+          renderSpectatorBar(data.spectators);
+        }
+      } else {
+        showRoomView(data);
+      }
       break;
 
     case 'room_update':
-      updateRoomView(data);
+      if (AppState.room) {
+        AppState.room.players = data.players;
+        AppState.room.spectators = data.spectators;
+        AppState.room.ready = data.ready;
+        AppState.room.status = data.status;
+      }
+      if (AppState.currentView === 'room-view') {
+        updateRoomView(data);
+      } else if (AppState.currentView === 'game-view') {
+        renderSpectatorBar(data.spectators);
+      }
       break;
 
     case 'coin_flip':
@@ -206,6 +224,10 @@ function handleServerMessage(type, data) {
         startOnlineGame(data);
         AppState.pendingGame = null;
         AppState.waitingForGameStart = false;
+      } else if (AppState.playerIndex === -1) {
+        // 观战者自动进入新一局
+        startOnlineGame(data);
+        AppState.pendingGame = null;
       }
       break;
 
@@ -256,14 +278,18 @@ function handleServerMessage(type, data) {
       AppState.game = null;
       AppState.selectedPiece = null;
       AppState.room = { ...AppState.room, ...data };
-      showRoomView(data);
+      if (AppState.playerIndex === -1) {
+        // 观战者回到房间等待下一局
+        showRoomView(data);
+      } else {
+        showRoomView(data);
+      }
       break;
 
     case 'room_full': {
-      const enterAsSpectator = confirm('该房间已满员，是否要以观战模式进入？');
-      if (enterAsSpectator) {
+      showConfirm('房间已满', '该房间已满员，是否要以观战模式进入？', () => {
         send('join_room', { code: data.code });
-      }
+      }, 'btn-primary');
       break;
     }
 
@@ -376,7 +402,7 @@ function updateRoomView(data) {
   }
 
   // 更新房间状态
-  if (data.status === 'playing' || data.status === 'finished') {
+  if (data.status === 'playing' || data.status === 'finished' || AppState.playerIndex === -1) {
     document.getElementById('ready-btn').style.display = 'none';
   } else {
     document.getElementById('ready-btn').style.display = 'inline-block';
@@ -423,7 +449,74 @@ document.getElementById('copy-code-btn').addEventListener('click', () => {
   }
 });
 
-// ==================== 抛硬币动画 ====================
+// ==================== 通用确认弹窗 ====================
+function showConfirm(title, message, onYes, yesClass = 'btn-danger') {
+  document.getElementById('confirm-title').textContent = title;
+  document.getElementById('confirm-message').textContent = message;
+  const yesBtn = document.getElementById('confirm-yes-btn');
+  const noBtn = document.getElementById('confirm-no-btn');
+  yesBtn.className = yesClass;
+  yesBtn.onclick = () => {
+    document.getElementById('confirm-modal').style.display = 'none';
+    onYes();
+  };
+  noBtn.onclick = () => {
+    document.getElementById('confirm-modal').style.display = 'none';
+  };
+  document.getElementById('confirm-modal').style.display = 'flex';
+}
+
+// ==================== 观战者提示条 ====================
+function renderSpectatorBar(spectators) {
+  const bar = document.getElementById('spectator-bar');
+  const text = document.getElementById('spectator-bar-text');
+  if (spectators && spectators.length > 0) {
+    bar.style.display = 'block';
+    text.textContent = spectators.join('、') + ' 在观战';
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+// ==================== 观战者加入游戏 ====================
+function startSpectatorGame(gameState) {
+  AppState.game = {
+    board: deserializeBoard(gameState.board),
+    currentPlayer: gameState.currentPlayer,
+    firstPlayer: gameState.firstPlayer,
+    playerColors: gameState.playerColors,
+    status: gameState.status,
+    lastMove: null,
+    mode: 'online'
+  };
+  AppState.myColor = null;
+  AppState.isMyTurn = false;
+  AppState.selectedPiece = null;
+  AppState.waitingForGameStart = false;
+
+  switchView('game-view');
+  renderGame();
+}
+
+// ==================== 观战者游戏结束弹窗 ====================
+function showSpectatorGameOver(data) {
+  const titleEl = document.getElementById('game-over-title');
+  const msgEl = document.getElementById('game-over-message');
+
+  if (data.winner === null) {
+    titleEl.textContent = '和局';
+    msgEl.textContent = data.reason || '双方无子';
+  } else {
+    const winnerColor = data.winner;
+    titleEl.textContent = winnerColor === 'red' ? '红方胜利' : '黑方胜利';
+    const winnerName = data.winnerName || (winnerColor === 'red' ? '红方' : '黑方');
+    msgEl.textContent = `${winnerName}（${winnerColor === 'red' ? '红方' : '黑方'}）赢得了对局`;
+  }
+
+  document.getElementById('play-again-btn').textContent = '继续观战';
+  document.getElementById('back-to-lobby-btn').textContent = '退出';
+  document.getElementById('game-over-modal').style.display = 'flex';
+}
 function showCoinFlip(result) {
   const overlay = document.getElementById('coin-flip-overlay');
   const frontFace = document.querySelector('.coin-front');
@@ -534,6 +627,15 @@ function deserializeBoard(serializedBoard) {
 // ==================== 棋盘渲染 ====================
 function renderGame() {
   if (!AppState.game) return;
+
+  if (AppState.playerIndex === -1 && AppState.room) {
+    renderSpectatorBar(AppState.room.spectators || []);
+  }
+
+  // 观战者隐藏悔棋和投降按钮
+  const isSpectator = AppState.playerIndex === -1;
+  document.getElementById('undo-btn').style.display = isSpectator ? 'none' : '';
+  document.getElementById('surrender-btn').style.display = isSpectator ? 'none' : '';
 
   renderBoard();
   renderPiecesCount();
@@ -689,7 +791,8 @@ function renderHeader() {
       }
     } else if (game.status === 'playing') {
       if (AppState.playerIndex === -1) {
-        turnEl.textContent = AppState.isMyTurn ? '你的回合' : '对方回合';
+        const currentColor = game.playerColors[game.currentPlayer];
+        turnEl.textContent = currentColor === 'red' ? '红方回合' : '黑方回合';
       } else {
         turnEl.textContent = AppState.isMyTurn ? '你的回合' : '对方回合';
       }
@@ -1101,11 +1204,20 @@ function handleGameOver(data) {
   if (game) {
     game.status = 'finished';
   }
+  renderGame();
+
+  // 观战者模式
+  if (AppState.playerIndex === -1) {
+    showSpectatorGameOver(data);
+    return;
+  }
 
   // 对方非正常离开时，不显示胜负判定
   if (data.reason === '对方离开') {
     document.getElementById('game-over-title').textContent = '游戏结束';
     document.getElementById('game-over-message').textContent = '对方离开';
+    document.getElementById('play-again-btn').textContent = '再来一局';
+    document.getElementById('back-to-lobby-btn').textContent = '返回大厅';
     document.getElementById('game-over-modal').style.display = 'flex';
     return;
   }
@@ -1132,6 +1244,8 @@ function showGameOver(winner, message, winnerName = null) {
     titleEl.textContent = winnerName === AppState.username ? '胜利' : '失败';
   }
   document.getElementById('game-over-message').textContent = message;
+  document.getElementById('play-again-btn').textContent = '再来一局';
+  document.getElementById('back-to-lobby-btn').textContent = '返回大厅';
   document.getElementById('game-over-modal').style.display = 'flex';
 }
 
@@ -1187,25 +1301,28 @@ function handleUndoAccepted(data) {
 document.getElementById('surrender-btn').addEventListener('click', () => {
   if (!AppState.game || AppState.game.status === 'finished') return;
 
-  if (!confirm('确定要投降吗？')) return;
+  showConfirm('投降', '确定要投降吗？', () => {
+    if (AppState.game.mode === 'local') {
+      const game = AppState.game;
+      const currentColor = game.playerColors[game.currentPlayer];
+      const winner = currentColor === 'red' ? 'black' : 'red';
+      game.status = 'finished';
+      showGameOver(winner, '投降');
+      return;
+    }
 
-  if (AppState.game.mode === 'local') {
-    const game = AppState.game;
-    const currentColor = game.playerColors[game.currentPlayer];
-    const winner = currentColor === 'red' ? 'black' : 'red';
-    game.status = 'finished';
-    showGameOver(winner, '投降');
-    return;
-  }
-
-  if (AppState.room) {
-    send('surrender', { roomId: AppState.room.roomId });
-  }
+    if (AppState.room) {
+      send('surrender', { roomId: AppState.room.roomId });
+    }
+  });
 });
 
 // ==================== 游戏结束弹窗 ====================
 document.getElementById('play-again-btn').addEventListener('click', () => {
   document.getElementById('game-over-modal').style.display = 'none';
+
+  // 观战者：继续观战，等待下一局
+  if (AppState.playerIndex === -1) return;
 
   if (AppState.game && AppState.game.mode === 'local') {
     send('local_start', {});
@@ -1219,6 +1336,13 @@ document.getElementById('play-again-btn').addEventListener('click', () => {
 document.getElementById('back-to-lobby-btn').addEventListener('click', () => {
   document.getElementById('game-over-modal').style.display = 'none';
 
+  // 观战者：退出观战
+  if (AppState.playerIndex === -1) {
+    send('leave_room', {});
+    switchView('lobby-view');
+    return;
+  }
+
   if (AppState.game && AppState.game.mode === 'local') {
     AppState.game = null;
     switchView('mode-view');
@@ -1230,8 +1354,23 @@ document.getElementById('back-to-lobby-btn').addEventListener('click', () => {
 
 // ==================== 退出游戏 ====================
 document.getElementById('game-exit-btn').addEventListener('click', () => {
+  if (AppState.playerIndex === -1) {
+    // 观战者直接退出，无需确认
+    send('leave_room', {});
+    switchView('lobby-view');
+    return;
+  }
+
   if (AppState.game && AppState.game.status !== 'finished') {
-    if (!confirm('确定要退出当前游戏吗？')) return;
+    showConfirm('退出游戏', '确定要退出当前游戏吗？', () => {
+      if (AppState.game && AppState.game.mode === 'local') {
+        AppState.game = null;
+        switchView('mode-view');
+      } else if (AppState.room) {
+        send('leave_room', {});
+      }
+    });
+    return;
   }
 
   if (AppState.game && AppState.game.mode === 'local') {

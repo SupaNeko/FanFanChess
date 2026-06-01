@@ -63,7 +63,10 @@ class RoomManager {
     }
 
     if (room.status === 'playing') {
-      return { success: false, error: '房间已开始游戏' };
+      // 游戏中只允许观战（除非是断线重连的玩家）
+      room.spectators.push(username);
+      this.userRooms.set(username, room.id);
+      return { success: true, room, isPlayer: false };
     }
 
     // 检查是否已在房间中（可能是断线重连）

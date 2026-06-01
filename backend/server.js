@@ -127,7 +127,7 @@ wss.on('connection', (ws) => {
           const room = result.room;
           const playerIndex = getPlayerIndex(room, username);
 
-          send(ws, 'room_joined', {
+          const resData = {
             roomId: room.id,
             code: room.code,
             players: room.players,
@@ -136,7 +136,22 @@ wss.on('connection', (ws) => {
             status: room.status,
             isPlayer: result.isPlayer,
             playerIndex: playerIndex >= 0 ? playerIndex : -1
-          });
+          };
+
+          // 如果作为观战者加入正在进行的游戏，附带当前游戏状态
+          if (playerIndex === -1 && room.game) {
+            const game = room.game;
+            resData.gameState = {
+              board: serializeBoard(game.board),
+              currentPlayer: game.currentPlayer,
+              firstPlayer: game.firstPlayer,
+              playerColors: game.playerColors,
+              status: game.status,
+              players: room.players
+            };
+          }
+
+          send(ws, 'room_joined', resData);
 
           // 通知房间其他人
           broadcastToRoom(room, 'room_update', {
@@ -397,7 +412,8 @@ wss.on('connection', (ws) => {
             console.error('保存对局失败:', e);
           }
 
-          broadcastToRoom(room, 'game_over', {
+            const winnerIdx = game.winner ? game.playerColors.indexOf(game.winner) : -1;
+            broadcastToRoom(room, 'game_over', {
               winner: game.winner,
               winnerName: winnerIdx >= 0 ? room.players[winnerIdx] : null,
               reason: game.winReason,
@@ -421,9 +437,9 @@ wss.on('connection', (ws) => {
           if (game.status !== 'playing' && game.status !== 'flipping') return;
 
           game.status = 'finished';
-          // winner 统一保存为颜色（若已绑定），否则用用户名兜底
+          // winner 保存为颜色
           const opponentIndex = 1 - playerIndex;
-          game.winner = game.playerColors[opponentIndex] || room.players[opponentIndex];
+          game.winner = game.playerColors[opponentIndex];
           game.winReason = '对方投降';
           room.status = 'finished';
 

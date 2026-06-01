@@ -453,6 +453,18 @@ button {
   position: relative;
 }
 
+/* 观战者提示条 */
+.spectator-bar {
+  text-align: center;
+  background: rgba(240, 173, 78, 0.15);
+  border: 1px solid #f0ad4e;
+  border-radius: 4px;
+  padding: 6px 16px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: #8a6d3b;
+}
+
 .chess-board {
   display: grid;
   grid-template-columns: repeat(8, 60px);

@@ -142,6 +142,9 @@
 
           <!-- 棋盘区域 -->
           <div class="board-area">
+            <div class="spectator-bar" id="spectator-bar" style="display:none;">
+              <span id="spectator-bar-text"></span>
+            </div>
             <div id="chess-board" class="chess-board"></div>
             <div class="last-move-hint" id="last-move-hint"></div>
           </div>
@@ -182,6 +185,18 @@
             <button id="undo-accept-btn" class="btn-primary">同意</button>
             <button id="undo-reject-btn" class="btn-secondary">拒绝</button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 通用确认弹窗（body级，不受view切换影响） -->
+    <div id="confirm-modal" class="modal" style="display:none;">
+      <div class="modal-content">
+        <h3 id="confirm-title"></h3>
+        <p id="confirm-message"></p>
+        <div class="modal-actions">
+          <button id="confirm-yes-btn">确认</button>
+          <button id="confirm-no-btn" class="btn-secondary">取消</button>
         </div>
       </div>
     </div>
