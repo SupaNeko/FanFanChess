@@ -430,31 +430,51 @@ function showCoinFlip(result) {
   const coin = document.getElementById('coin');
   const text = document.getElementById('coin-result-text');
 
+  // 隐藏棕色背景，用深色衬托金币
+  const origBg = document.body.style.background;
+  document.body.style.background = '#1a1a2e';
+
   overlay.style.display = 'flex';
   text.textContent = '决定先后手...';
+  coin.style.transform = 'rotateY(0deg)';
+  coin.style.animation = 'none';
 
-  // 启动硬币晃动动画
-  coin.style.animation = 'coinWobble 1.5s ease-out forwards';
+  // JS 直接驱动晃动动画
+  const duration = 1500;
+  const start = performance.now();
 
-  // 动画结束后：显示正确面 + 结果文字，停 1s 后进入游戏
-  coin.addEventListener('animationend', function onAnimEnd() {
-    coin.removeEventListener('animationend', onAnimEnd);
+  function wobbleFrame(now) {
+    const elapsed = now - start;
+    const progress = Math.min(elapsed / duration, 1);
+    // 衰减晃动: sin 频率递减, 振幅递减
+    const freq = 6 - 3 * progress;          // 6→3
+    const amp = 25 * (1 - progress) + 2;    // 27→2
+    const angle = Math.sin(progress * Math.PI * freq) * amp;
+    coin.style.transform = `rotateY(${angle}deg)`;
 
-    const isFirst = result === AppState.playerIndex;
-    coin.style.animation = 'none';
-    coin.style.transform = isFirst ? 'rotateY(0deg)' : 'rotateY(180deg)';
-    text.textContent = isFirst ? '您先手！' : '您后手！';
+    if (progress < 1) {
+      requestAnimationFrame(wobbleFrame);
+    } else {
+      // 停止：显示正确面
+      const isFirst = result === AppState.playerIndex;
+      coin.style.transform = isFirst ? 'rotateY(0deg)' : 'rotateY(180deg)';
+      text.textContent = isFirst ? '您先手！' : '您后手！';
 
-    setTimeout(() => {
-      overlay.style.display = 'none';
-      if (AppState.pendingGame) {
-        startOnlineGame(AppState.pendingGame);
-        AppState.pendingGame = null;
-      } else {
-        AppState.waitingForGameStart = true;
-      }
-    }, 1000);
-  });
+      // 1s 后进入游戏
+      setTimeout(() => {
+        overlay.style.display = 'none';
+        document.body.style.background = origBg;
+        if (AppState.pendingGame) {
+          startOnlineGame(AppState.pendingGame);
+          AppState.pendingGame = null;
+        } else {
+          AppState.waitingForGameStart = true;
+        }
+      }, 1000);
+    }
+  }
+
+  requestAnimationFrame(wobbleFrame);
 }
 
 // ==================== 游戏初始化 ====================
