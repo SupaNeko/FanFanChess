@@ -94,19 +94,19 @@
       </div>
     </div>
 
+    <!-- 抛硬币动画层（body级，不受view切换影响） -->
+    <div id="coin-flip-overlay" class="overlay" style="display:none;">
+      <div class="coin-flip-container">
+        <div class="coin" id="coin">
+          <div class="coin-face coin-front"></div>
+          <div class="coin-face coin-back"></div>
+        </div>
+        <p id="coin-result-text">决定先后手...</p>
+      </div>
+    </div>
+
     <!-- 游戏页 -->
     <div id="game-view" class="view">
-      <!-- 抛硬币动画层 -->
-      <div id="coin-flip-overlay" class="overlay" style="display:none;">
-        <div class="coin-flip-container">
-          <div class="coin" id="coin">
-            <div class="coin-face coin-front"></div>
-            <div class="coin-face coin-back"></div>
-          </div>
-          <p id="coin-result-text">决定先后手...</p>
-        </div>
-      </div>
-
       <!-- 规则浮窗按钮 -->
       <div class="rules-wrapper">
         <button id="rules-btn" class="rules-btn">?</button>
