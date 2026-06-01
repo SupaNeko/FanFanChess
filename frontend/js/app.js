@@ -257,7 +257,9 @@ function handleServerMessage(type, data) {
     case 'undo_accepted':
       hideToast();
       handleUndoAccepted(data);
-      showToast('对方同意了你的悔棋请求', 'success');
+      if (data.undoRequester === AppState.playerIndex) {
+        showToast('对方同意了你的悔棋请求', 'success');
+      }
       break;
 
     case 'undo_rejected':

@@ -485,6 +485,12 @@ wss.on('connection', (ws) => {
             return;
           }
 
+          // 第一步翻棋（决定颜色）禁止悔棋
+          if (game.history.length === 1) {
+            send(ws, 'error', { message: '第一步翻棋无法悔棋' });
+            return;
+          }
+
           game.undoRequest = playerIndex;
           const otherPlayer = room.players[1 - playerIndex];
           const otherWs = clients.get(otherPlayer);
@@ -510,26 +516,25 @@ wss.on('connection', (ws) => {
           if (accept) {
             // 回退一步
             if (game.history.length > 0) {
-              game.history.pop();
+              const undoneEntry = game.history.pop();
               // 恢复到上一步的棋盘状态
               if (game.history.length > 0) {
-                const lastState = game.history[game.history.length - 1];
-                game.board = lastState.board.map(row =>
+                const prevState = game.history[game.history.length - 1];
+                game.board = prevState.board.map(row =>
                   row.map(p => p ? { ...p } : null)
                 );
-                game.currentPlayer = lastState.playerIndex;
-                game.lastMove = game.history.length > 1 ? game.history[game.history.length - 2] : null;
+                game.lastMove = game.history[game.history.length - 1];
               } else {
-                // 没有任何历史了，重新初始化
-                // 这种情况理论上不会发生，因为flipping的第一步也会记录
-                game.currentPlayer = game.undoRequest;
                 game.lastMove = null;
               }
+              // 回合回到被撤销操作的那一方
+              game.currentPlayer = undoneEntry.playerIndex;
 
               broadcastToRoom(room, 'undo_accepted', {
                 board: serializeBoard(game.board),
                 currentPlayer: game.currentPlayer,
-                lastMove: game.lastMove
+                lastMove: game.lastMove,
+                undoRequester: game.undoRequest
               });
             }
           } else {
