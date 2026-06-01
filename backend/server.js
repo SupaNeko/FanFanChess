@@ -166,25 +166,19 @@ wss.on('connection', (ws) => {
             const game = roomManager.startGame(roomId);
             const firstPlayerIndex = game.firstPlayer;
 
-            // 广播抛硬币
             broadcastToRoom(room, 'coin_flip', {
               result: firstPlayerIndex,
               players: room.players
             });
 
-            // 延迟2.5秒后发送游戏开始（等动画结束）
-            setTimeout(() => {
-              const room2 = roomManager.getRoomById(roomId);
-              if (!room2 || !room2.game) return;
-
-              broadcastToRoom(room2, 'game_started', {
-                board: serializeBoard(room2.game.board),
-                currentPlayer: room2.game.currentPlayer,
-                firstPlayer: room2.game.firstPlayer,
-                players: room2.players,
-                status: room2.game.status
-              });
-            }, 2500);
+            broadcastToRoom(room, 'game_started', {
+              board: serializeBoard(game.board),
+              currentPlayer: game.currentPlayer,
+              firstPlayer: game.firstPlayer,
+              players: room.players,
+              status: game.status,
+              playerColors: game.playerColors
+            });
           }
           break;
         }

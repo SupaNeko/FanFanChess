@@ -194,9 +194,6 @@ function handleServerMessage(type, data) {
 
     case 'room_update':
       updateRoomView(data);
-      if (data.ready && data.ready[0] && data.ready[1]) {
-        showRoomLoading();
-      }
       break;
 
     case 'coin_flip':
@@ -204,8 +201,12 @@ function handleServerMessage(type, data) {
       break;
 
     case 'game_started':
-      hideRoomLoading();
-      startOnlineGame(data);
+      AppState.pendingGame = data;
+      if (AppState.waitingForGameStart) {
+        startOnlineGame(data);
+        AppState.pendingGame = null;
+        AppState.waitingForGameStart = false;
+      }
       break;
 
     case 'piece_flipped':
@@ -252,7 +253,6 @@ function handleServerMessage(type, data) {
       break;
 
     case 'room_reset':
-      hideRoomLoading();
       AppState.game = null;
       AppState.selectedPiece = null;
       AppState.room = { ...AppState.room, ...data };
@@ -388,19 +388,8 @@ document.getElementById('ready-btn').addEventListener('click', () => {
   send('ready', { roomId: AppState.room.roomId });
 });
 
-function showRoomLoading() {
-  const overlay = document.getElementById('room-loading-overlay');
-  if (overlay) overlay.style.display = 'flex';
-}
-
-function hideRoomLoading() {
-  const overlay = document.getElementById('room-loading-overlay');
-  if (overlay) overlay.style.display = 'none';
-}
-
 document.getElementById('leave-room-btn').addEventListener('click', () => {
   send('leave_room', {});
-  hideRoomLoading();
 });
 
 document.getElementById('copy-code-btn').addEventListener('click', () => {
@@ -442,18 +431,25 @@ function showCoinFlip(result) {
 
   overlay.style.display = 'flex';
   overlay.classList.add('coin-flip');
-
   text.textContent = '决定先后手...';
 
+  // 1.5s 动画后显示结果
   setTimeout(() => {
     const isFirst = result === AppState.playerIndex;
     text.textContent = isFirst ? '您先手！' : '您后手！';
-  }, 2500);
+  }, 1500);
 
+  // 2.5s 后隐藏 overlay 并进入游戏
   setTimeout(() => {
     overlay.style.display = 'none';
     overlay.classList.remove('coin-flip');
-  }, 3500);
+    if (AppState.pendingGame) {
+      startOnlineGame(AppState.pendingGame);
+      AppState.pendingGame = null;
+    } else {
+      AppState.waitingForGameStart = true;
+    }
+  }, 2500);
 }
 
 // ==================== 游戏初始化 ====================
