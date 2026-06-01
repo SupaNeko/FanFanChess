@@ -254,6 +254,14 @@ function handleServerMessage(type, data) {
       showRoomView(data);
       break;
 
+    case 'room_full': {
+      const enterAsSpectator = confirm('该房间已满员，是否要以观战模式进入？');
+      if (enterAsSpectator) {
+        send('join_room', { code: data.code });
+      }
+      break;
+    }
+
     case 'error':
       showToast(data.message, 'error');
       // 房间已被删除（如创建者离开后房间解散），清理状态返回大厅

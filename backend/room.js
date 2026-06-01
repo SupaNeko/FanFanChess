@@ -62,8 +62,8 @@ class RoomManager {
       return { success: false, error: '房间不存在' };
     }
 
-    if (room.status !== 'waiting') {
-      return { success: false, error: '房间已开始游戏或已结束' };
+    if (room.status === 'playing') {
+      return { success: false, error: '房间已开始游戏' };
     }
 
     // 检查是否已在房间中（可能是断线重连）

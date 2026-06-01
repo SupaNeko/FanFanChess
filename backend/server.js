@@ -536,30 +536,42 @@ wss.on('connection', (ws) => {
 
         case 'play_again': {
           if (!username) return;
-          const room = roomManager.getRoomByUser(username);
-          if (!room) return;
-
-          const playerIndex = getPlayerIndex(room, username);
-          if (playerIndex === -1) {
-            send(ws, 'error', { message: '你不是玩家' });
+          const { roomId } = data;
+          const room = roomManager.getRoomById(roomId);
+          if (!room) {
+            send(ws, 'error', { message: '房间不存在' });
             return;
           }
 
-          const otherIndex = 1 - playerIndex;
-          const otherPlayer = room.players[otherIndex];
+          // 检查玩家当前是否在这个房间里
+          const currentRoom = roomManager.getRoomByUser(username);
+          const isInRoom = currentRoom && currentRoom.id === roomId;
 
-          // 将另一个玩家移出房间（不选择再来一局的人直接退出）
-          if (otherPlayer) {
-            room.players[otherIndex] = null;
-            roomManager.userRooms.delete(otherPlayer);
-
-            const otherWs = clients.get(otherPlayer);
-            if (otherWs) {
-              send(otherWs, 'left_room', {});
+          if (!isInRoom) {
+            // 玩家已离开，需要重新加入
+            if (room.players[0] && room.players[1]) {
+              send(ws, 'room_full', { code: room.code, roomId: room.id });
+              return;
             }
+
+            // 加入玩家位
+            if (!room.players[0]) {
+              room.players[0] = username;
+            } else {
+              room.players[1] = username;
+            }
+            roomManager.userRooms.set(username, roomId);
+
+            // 广播 room_update
+            broadcastToRoom(room, 'room_update', {
+              players: room.players,
+              spectators: room.spectators,
+              ready: room.ready,
+              status: room.status
+            });
           }
 
-          // 重置房间，点击者保留在房间内
+          // 重置房间为 waiting（对房间内的所有人同步状态，但不踢人）
           roomManager.resetRoom(room.id);
           broadcastToRoom(room, 'room_reset', {
             roomId: room.id,
