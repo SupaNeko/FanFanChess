@@ -546,6 +546,7 @@ wss.on('connection', (ws) => {
           // 检查玩家当前是否在这个房间里
           const currentRoom = roomManager.getRoomByUser(username);
           const isInRoom = currentRoom && currentRoom.id === roomId;
+          const playerIndex = getPlayerIndex(room, username);
 
           if (!isInRoom) {
             // 玩家已离开，需要重新加入
@@ -569,9 +570,18 @@ wss.on('connection', (ws) => {
               ready: room.ready,
               status: room.status
             });
+          } else if (playerIndex !== -1) {
+            // 玩家在房间里且是玩家：清出另一方玩家位
+            // 不踢人、不发消息，让另一方停留在 game_over 弹窗中自由选择
+            const otherIndex = 1 - playerIndex;
+            const otherPlayer = room.players[otherIndex];
+            if (otherPlayer) {
+              room.players[otherIndex] = null;
+              roomManager.userRooms.delete(otherPlayer);
+            }
           }
 
-          // 重置房间为 waiting（对房间内的所有人同步状态，但不踢人）
+          // 重置房间为 waiting
           roomManager.resetRoom(room.id);
           broadcastToRoom(room, 'room_reset', {
             roomId: room.id,
