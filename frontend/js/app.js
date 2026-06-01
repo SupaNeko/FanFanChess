@@ -431,26 +431,30 @@ function showCoinFlip(result) {
   const text = document.getElementById('coin-result-text');
 
   overlay.style.display = 'flex';
-  overlay.classList.add('coin-flip');
   text.textContent = '决定先后手...';
 
-  // 1.5s 动画后显示结果
-  setTimeout(() => {
-    const isFirst = result === AppState.playerIndex;
-    text.textContent = isFirst ? '您先手！' : '您后手！';
-  }, 1500);
+  // 启动硬币晃动动画
+  coin.style.animation = 'coinWobble 1.5s ease-out forwards';
 
-  // 2.5s 后隐藏 overlay 并进入游戏
-  setTimeout(() => {
-    overlay.style.display = 'none';
-    overlay.classList.remove('coin-flip');
-    if (AppState.pendingGame) {
-      startOnlineGame(AppState.pendingGame);
-      AppState.pendingGame = null;
-    } else {
-      AppState.waitingForGameStart = true;
-    }
-  }, 2500);
+  // 动画结束后：显示正确面 + 结果文字，停 1s 后进入游戏
+  coin.addEventListener('animationend', function onAnimEnd() {
+    coin.removeEventListener('animationend', onAnimEnd);
+
+    const isFirst = result === AppState.playerIndex;
+    coin.style.animation = 'none';
+    coin.style.transform = isFirst ? 'rotateY(0deg)' : 'rotateY(180deg)';
+    text.textContent = isFirst ? '您先手！' : '您后手！';
+
+    setTimeout(() => {
+      overlay.style.display = 'none';
+      if (AppState.pendingGame) {
+        startOnlineGame(AppState.pendingGame);
+        AppState.pendingGame = null;
+      } else {
+        AppState.waitingForGameStart = true;
+      }
+    }, 1000);
+  });
 }
 
 // ==================== 游戏初始化 ====================
