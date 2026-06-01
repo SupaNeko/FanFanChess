@@ -545,66 +545,16 @@ wss.on('connection', (ws) => {
             return;
           }
 
-          room.playAgain[playerIndex] = true;
-
-          const otherIndex = 1 - playerIndex;
-          const otherPlayer = room.players[otherIndex];
-
-          // 双方都点了：重置房间
-          if (room.playAgain[0] && room.playAgain[1]) {
-            roomManager.resetRoom(room.id);
-            broadcastToRoom(room, 'room_reset', {
-              roomId: room.id,
-              code: room.code,
-              players: room.players,
-              spectators: room.spectators,
-              ready: room.ready,
-              status: room.status
-            });
-          }
-          // 对方已经离开（players为null）
-          else if (!otherPlayer) {
-            roomManager.resetRoom(room.id);
-            broadcastToRoom(room, 'room_reset', {
-              roomId: room.id,
-              code: room.code,
-              players: room.players,
-              spectators: room.spectators,
-              ready: room.ready,
-              status: room.status
-            });
-          }
-          // 加入者点了，创建者没点 → 踢出创建者，加入者继承房间
-          else if (!room.playAgain[otherIndex] && playerIndex === 1) {
-            const creatorWs = clients.get(otherPlayer);
-            if (creatorWs) {
-              send(creatorWs, 'kicked', { reason: '对方选择了再来一局，您已被移出房间' });
-            }
-            // 先将房间设为waiting，防止leaveRoom删除房间
-            room.status = 'waiting';
-            roomManager.leaveRoom(otherPlayer);
-
-            // 加入者继承为房主
-            room.players[0] = username;
-            room.players[1] = null;
-            room.ready = [false, false];
-            room.playAgain = [false, false];
-            room.game = null;
-            room.creator = username;
-            roomManager.userRooms.set(username, room.id);
-
-            broadcastToRoom(room, 'room_update', {
-              players: room.players,
-              spectators: room.spectators,
-              ready: room.ready,
-              status: room.status
-            });
-            send(ws, 'room_inherited', { code: room.code });
-          }
-          // 创建者点了，加入者没点 → 等待
-          else if (!room.playAgain[otherIndex] && playerIndex === 0) {
-            send(ws, 'waiting_opponent', {});
-          }
+          // 直接重置房间，无需等待对方，也无需房主继承
+          roomManager.resetRoom(room.id);
+          broadcastToRoom(room, 'room_reset', {
+            roomId: room.id,
+            code: room.code,
+            players: room.players,
+            spectators: room.spectators,
+            ready: room.ready,
+            status: room.status
+          });
           break;
         }
 
