@@ -433,32 +433,46 @@ function showCoinFlip(result) {
 
   overlay.style.display = 'flex';
   text.textContent = '决定先后手...';
+
+  // 初始状态：正面可见
   frontFace.style.opacity = '1';
   backFace.style.opacity = '0';
+  coin.style.transform = 'scaleX(1)';
 
-  // 2D 翻转动画：scaleX 振荡 + 快速交替正面/背面 visible
   const duration = 1500;
-  const toggles = 12; // 翻转次数
-  const interval = duration / toggles;
-  let count = 0;
+  const start = performance.now();
   let showingFront = true;
+  let flipCount = 0;
+  const totalFlips = 14;
 
-  const flipTimer = setInterval(() => {
-    count++;
-    showingFront = !showingFront;
-    frontFace.style.opacity = showingFront ? '1' : '0';
-    backFace.style.opacity = showingFront ? '0' : '1';
+  function easeInOutQuad(t) {
+    return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  }
 
-    // scaleX 衰减振荡制造翻转感
-    const progress = count / toggles;
-    const scale = 0.3 + 0.7 * (1 - progress) * Math.abs(Math.cos(count * Math.PI));
-    coin.style.transform = `scaleX(${scale})`;
+  function animate(now) {
+    const elapsed = now - start;
+    const progress = Math.min(elapsed / duration, 1);
+    const eased = easeInOutQuad(progress);
 
-    if (count >= toggles) {
-      clearInterval(flipTimer);
+    // scaleX: 1 → 0.05（扁）→ 1
+    const scaleTarget = 0.05 + 0.95 * Math.abs(Math.cos(eased * Math.PI));
+    coin.style.transform = `scaleX(${scaleTarget})`;
 
-      const isFirst = result === AppState.playerIndex;
+    // 翻转次数随 eased 进度递增（中段快，两头慢）
+    const newFlipCount = Math.floor(eased * totalFlips);
+    if (newFlipCount > flipCount) {
+      flipCount = newFlipCount;
+      showingFront = !showingFront;
+      frontFace.style.opacity = showingFront ? '1' : '0';
+      backFace.style.opacity = showingFront ? '0' : '1';
+    }
+
+    if (progress < 1) {
+      requestAnimationFrame(animate);
+    } else {
+      // 强制停留在正确面
       coin.style.transform = 'scaleX(1)';
+      const isFirst = result === AppState.playerIndex;
       frontFace.style.opacity = isFirst ? '1' : '0';
       backFace.style.opacity = isFirst ? '0' : '1';
       text.textContent = isFirst ? '您先手！' : '您后手！';
@@ -474,7 +488,9 @@ function showCoinFlip(result) {
         }
       }, 1000);
     }
-  }, interval);
+  }
+
+  requestAnimationFrame(animate);
 }
 
 // ==================== 游戏初始化 ====================
