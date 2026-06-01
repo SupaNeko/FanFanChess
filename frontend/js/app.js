@@ -201,6 +201,7 @@ function handleServerMessage(type, data) {
       break;
 
     case 'game_started':
+      hideRoomLoading();
       startOnlineGame(data);
       break;
 
@@ -248,6 +249,7 @@ function handleServerMessage(type, data) {
       break;
 
     case 'room_reset':
+      hideRoomLoading();
       AppState.game = null;
       AppState.selectedPiece = null;
       AppState.room = { ...AppState.room, ...data };
@@ -381,10 +383,22 @@ function updateRoomView(data) {
 document.getElementById('ready-btn').addEventListener('click', () => {
   if (!AppState.room) return;
   send('ready', { roomId: AppState.room.roomId });
+  showRoomLoading();
 });
+
+function showRoomLoading() {
+  const overlay = document.getElementById('room-loading-overlay');
+  if (overlay) overlay.style.display = 'flex';
+}
+
+function hideRoomLoading() {
+  const overlay = document.getElementById('room-loading-overlay');
+  if (overlay) overlay.style.display = 'none';
+}
 
 document.getElementById('leave-room-btn').addEventListener('click', () => {
   send('leave_room', {});
+  hideRoomLoading();
 });
 
 document.getElementById('copy-code-btn').addEventListener('click', () => {
