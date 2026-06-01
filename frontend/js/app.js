@@ -215,7 +215,10 @@ function handleServerMessage(type, data) {
       break;
 
     case 'coin_flip':
-      showCoinFlip(data.result);
+      // 观战者不显示抛硬币动画
+      if (AppState.playerIndex !== -1) {
+        showCoinFlip(data.result);
+      }
       break;
 
     case 'game_started':
@@ -252,11 +255,14 @@ function handleServerMessage(type, data) {
       break;
 
     case 'undo_accepted':
+      hideToast();
       handleUndoAccepted(data);
+      showToast('对方同意了你的悔棋请求', 'success');
       break;
 
     case 'undo_rejected':
-      showToast('对方拒绝了悔棋请求', 'info');
+      hideToast();
+      showToast('对方拒绝了你的悔棋请求', 'error');
       break;
 
     case 'game_over':
@@ -1262,6 +1268,7 @@ document.getElementById('undo-btn').addEventListener('click', () => {
   }
 
   if (!AppState.room) return;
+  showToast('正在等待对方回应...', 'info');
   send('request_undo', { roomId: AppState.room.roomId });
 });
 
