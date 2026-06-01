@@ -545,7 +545,21 @@ wss.on('connection', (ws) => {
             return;
           }
 
-          // 直接重置房间，无需等待对方，也无需房主继承
+          const otherIndex = 1 - playerIndex;
+          const otherPlayer = room.players[otherIndex];
+
+          // 将另一个玩家移出房间（不选择再来一局的人直接退出）
+          if (otherPlayer) {
+            room.players[otherIndex] = null;
+            roomManager.userRooms.delete(otherPlayer);
+
+            const otherWs = clients.get(otherPlayer);
+            if (otherWs) {
+              send(otherWs, 'left_room', {});
+            }
+          }
+
+          // 重置房间，点击者保留在房间内
           roomManager.resetRoom(room.id);
           broadcastToRoom(room, 'room_reset', {
             roomId: room.id,
