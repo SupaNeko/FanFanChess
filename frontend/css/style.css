@@ -646,6 +646,7 @@ button {
 
 .coin-flip-container {
   text-align: center;
+  perspective: 600px;
 }
 
 .coin {
