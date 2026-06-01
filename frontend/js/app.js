@@ -194,6 +194,9 @@ function handleServerMessage(type, data) {
 
     case 'room_update':
       updateRoomView(data);
+      if (data.ready && data.ready[0] && data.ready[1]) {
+        showRoomLoading();
+      }
       break;
 
     case 'coin_flip':
@@ -383,7 +386,6 @@ function updateRoomView(data) {
 document.getElementById('ready-btn').addEventListener('click', () => {
   if (!AppState.room) return;
   send('ready', { roomId: AppState.room.roomId });
-  showRoomLoading();
 });
 
 function showRoomLoading() {
