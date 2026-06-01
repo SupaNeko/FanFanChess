@@ -44,6 +44,7 @@ class RoomManager {
       players: [creator, null], // 创建者默认占第一个位置
       spectators: [],
       ready: [false, false],
+      playAgain: [false, false],
       game: null,
       status: 'waiting',
       creator: creator,
@@ -235,6 +236,18 @@ class RoomManager {
 
     room.status = 'playing';
     return room.game;
+  }
+
+  resetRoom(roomId) {
+    const room = this.rooms.get(roomId);
+    if (!room) return null;
+
+    room.status = 'waiting';
+    room.ready = [false, false];
+    room.playAgain = [false, false];
+    room.game = null;
+
+    return room;
   }
 
   getRoomById(roomId) {

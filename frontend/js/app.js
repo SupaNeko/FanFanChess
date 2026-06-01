@@ -247,6 +247,31 @@ function handleServerMessage(type, data) {
       startLocalGame(data);
       break;
 
+    case 'room_reset':
+      AppState.game = null;
+      AppState.selectedPiece = null;
+      AppState.room = { ...AppState.room, ...data };
+      showRoomView(data);
+      break;
+
+    case 'kicked':
+      AppState.room = null;
+      AppState.game = null;
+      sessionStorage.removeItem('fanfan_room_code');
+      showToast(data.reason || '您已被移出房间', 'info');
+      switchView('lobby-view');
+      break;
+
+    case 'room_inherited':
+      AppState.room = { ...AppState.room, ...data };
+      showToast(`您已成为新房主，邀请码：${data.code}`, 'success');
+      showRoomView(AppState.room);
+      break;
+
+    case 'waiting_opponent':
+      showToast('等待对方选择再来一局...', 'info');
+      break;
+
     case 'error':
       showToast(data.message, 'error');
       // 房间已被删除（如创建者离开后房间解散），清理状态返回大厅
@@ -358,6 +383,8 @@ function updateRoomView(data) {
   // 更新房间状态
   if (data.status === 'playing' || data.status === 'finished') {
     document.getElementById('ready-btn').style.display = 'none';
+  } else {
+    document.getElementById('ready-btn').style.display = 'inline-block';
   }
 }
 
@@ -1158,12 +1185,9 @@ document.getElementById('play-again-btn').addEventListener('click', () => {
   if (AppState.game && AppState.game.mode === 'local') {
     send('local_start', {});
   } else if (AppState.room) {
-    // 联机模式：返回房间
     AppState.game = null;
     AppState.selectedPiece = null;
-    // 通知服务器重置房间状态
-    send('leave_room', {});
-    switchView('lobby-view');
+    send('play_again', { roomId: AppState.room.roomId });
   }
 });
 
