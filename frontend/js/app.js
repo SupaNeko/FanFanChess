@@ -427,31 +427,54 @@ document.getElementById('copy-code-btn').addEventListener('click', () => {
 function showCoinFlip(result) {
   const overlay = document.getElementById('coin-flip-overlay');
   const coin = document.getElementById('coin');
+  const frontFace = document.querySelector('.coin-front');
+  const backFace = document.querySelector('.coin-back');
   const text = document.getElementById('coin-result-text');
 
   overlay.style.display = 'flex';
   text.textContent = '决定先后手...';
-  coin.classList.add('spinning');
+  frontFace.style.opacity = '1';
+  backFace.style.opacity = '0';
 
-  coin.addEventListener('animationend', function handler() {
-    coin.removeEventListener('animationend', handler);
-    coin.classList.remove('spinning');
+  // 2D 翻转动画：scaleX 振荡 + 快速交替正面/背面 visible
+  const duration = 1500;
+  const toggles = 12; // 翻转次数
+  const interval = duration / toggles;
+  let count = 0;
+  let showingFront = true;
 
-    const isFirst = result === AppState.playerIndex;
-    coin.style.transform = isFirst ? 'rotateY(0deg)' : 'rotateY(180deg)';
-    text.textContent = isFirst ? '您先手！' : '您后手！';
+  const flipTimer = setInterval(() => {
+    count++;
+    showingFront = !showingFront;
+    frontFace.style.opacity = showingFront ? '1' : '0';
+    backFace.style.opacity = showingFront ? '0' : '1';
 
-    setTimeout(() => {
-      overlay.style.display = 'none';
-      switchView('game-view');
-      if (AppState.pendingGame) {
-        startOnlineGame(AppState.pendingGame);
-        AppState.pendingGame = null;
-      } else {
-        AppState.waitingForGameStart = true;
-      }
-    }, 1000);
-  });
+    // scaleX 衰减振荡制造翻转感
+    const progress = count / toggles;
+    const scale = 0.3 + 0.7 * (1 - progress) * Math.abs(Math.cos(count * Math.PI));
+    coin.style.transform = `scaleX(${scale})`;
+
+    if (count >= toggles) {
+      clearInterval(flipTimer);
+
+      const isFirst = result === AppState.playerIndex;
+      coin.style.transform = 'scaleX(1)';
+      frontFace.style.opacity = isFirst ? '1' : '0';
+      backFace.style.opacity = isFirst ? '0' : '1';
+      text.textContent = isFirst ? '您先手！' : '您后手！';
+
+      setTimeout(() => {
+        overlay.style.display = 'none';
+        switchView('game-view');
+        if (AppState.pendingGame) {
+          startOnlineGame(AppState.pendingGame);
+          AppState.pendingGame = null;
+        } else {
+          AppState.waitingForGameStart = true;
+        }
+      }, 1000);
+    }
+  }, interval);
 }
 
 // ==================== 游戏初始化 ====================
