@@ -426,52 +426,24 @@ document.getElementById('copy-code-btn').addEventListener('click', () => {
 // ==================== 抛硬币动画 ====================
 function showCoinFlip(result) {
   const overlay = document.getElementById('coin-flip-overlay');
-  const coin = document.getElementById('coin');
   const frontFace = document.querySelector('.coin-front');
   const backFace = document.querySelector('.coin-back');
   const text = document.getElementById('coin-result-text');
 
   overlay.style.display = 'flex';
   text.textContent = '决定先后手...';
-
-  // 初始状态：正面可见
   frontFace.style.opacity = '1';
   backFace.style.opacity = '0';
-  coin.style.transform = 'scaleX(1)';
 
   const duration = 1500;
-  const start = performance.now();
+  const toggles = 14;
+  let count = 0;
   let showingFront = true;
-  let flipCount = 0;
-  const totalFlips = 14;
 
-  function easeInOutQuad(t) {
-    return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-  }
-
-  function animate(now) {
-    const elapsed = now - start;
-    const progress = Math.min(elapsed / duration, 1);
-    const eased = easeInOutQuad(progress);
-
-    // scaleX: 1 → 0.05（扁）→ 1
-    const scaleTarget = 0.05 + 0.95 * Math.abs(Math.cos(eased * Math.PI));
-    coin.style.transform = `scaleX(${scaleTarget})`;
-
-    // 翻转次数随 eased 进度递增（中段快，两头慢）
-    const newFlipCount = Math.floor(eased * totalFlips);
-    if (newFlipCount > flipCount) {
-      flipCount = newFlipCount;
-      showingFront = !showingFront;
-      frontFace.style.opacity = showingFront ? '1' : '0';
-      backFace.style.opacity = showingFront ? '0' : '1';
-    }
-
-    if (progress < 1) {
-      requestAnimationFrame(animate);
-    } else {
+  function nextToggle() {
+    count++;
+    if (count > toggles) {
       // 强制停留在正确面
-      coin.style.transform = 'scaleX(1)';
       const isFirst = result === AppState.playerIndex;
       frontFace.style.opacity = isFirst ? '1' : '0';
       backFace.style.opacity = isFirst ? '0' : '1';
@@ -487,10 +459,20 @@ function showCoinFlip(result) {
           AppState.waitingForGameStart = true;
         }
       }, 1000);
+      return;
     }
+
+    showingFront = !showingFront;
+    frontFace.style.opacity = showingFront ? '1' : '0';
+    backFace.style.opacity = showingFront ? '0' : '1';
+
+    // 间隔从快到慢：30ms → 300ms
+    const progress = count / toggles;
+    const delay = 30 + 270 * progress;
+    setTimeout(nextToggle, delay);
   }
 
-  requestAnimationFrame(animate);
+  nextToggle();
 }
 
 // ==================== 游戏初始化 ====================
