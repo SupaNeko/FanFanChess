@@ -425,6 +425,7 @@ document.getElementById('copy-code-btn').addEventListener('click', () => {
 
 // ==================== 抛硬币动画 ====================
 function showCoinFlip(result) {
+  switchView('game-view');
   const overlay = document.getElementById('coin-flip-overlay');
   const coin = document.getElementById('coin');
   const text = document.getElementById('coin-result-text');
